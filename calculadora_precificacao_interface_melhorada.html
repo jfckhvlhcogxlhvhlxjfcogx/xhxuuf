@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#172554">
+<title>Calculadora de Precificação</title>
+<style>
+:root{--ink:#172033;--muted:#667085;--line:#e5e7eb;--blue:#1d4ed8;--bg:#f3f5fa;--green:#15803d;--red:#b42318}
+*{box-sizing:border-box}
+body{margin:0;padding:20px 14px 40px;background:var(--bg);color:var(--ink);font-family:Arial,Helvetica,sans-serif}
+main{max-width:760px;margin:auto}
+header{margin:8px 2px 20px}
+h1{font-size:26px;margin:0 0 7px}
+.sub{color:var(--muted);font-size:14px;line-height:1.5;margin:0}
+.card{background:white;border:1px solid var(--line);border-radius:16px;padding:19px;margin:14px 0;box-shadow:0 5px 18px rgba(16,24,40,.04)}
+h2{font-size:17px;margin:0 0 12px}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+label{display:block;font-size:13px;font-weight:700;margin:4px 0 6px}
+.field{position:relative}
+.prefix,.suffix{position:absolute;top:50%;transform:translateY(-50%);font-size:13px;color:var(--muted);pointer-events:none}
+.prefix{left:12px}.suffix{right:12px}
+input,select{width:100%;border:1px solid #cfd5df;border-radius:10px;padding:12px;font-size:16px;background:#fff;color:var(--ink);outline:none}
+input.money{padding-left:39px}input.percent{padding-right:35px}
+input:focus,select:focus{border-color:var(--blue);box-shadow:0 0 0 3px #1d4ed81c}
+.hint{font-size:12px;color:var(--muted);line-height:1.45;margin:9px 0 0}
+button{border:0;border-radius:10px;padding:12px 15px;font-size:14px;font-weight:700;cursor:pointer}
+.primary{background:var(--blue);color:white;width:100%;margin-top:14px;font-size:16px;padding:14px}
+.secondary{background:#eef2ff;color:#1e40af}
+.danger{background:#fff1f2;color:#be123c}
+.result{background:#f8fafc;border:1px solid var(--line);border-radius:13px;padding:16px}
+.result-label{font-size:13px;font-weight:700;color:var(--muted)}
+.big{font-size:34px;font-weight:800;color:var(--green);margin:5px 0 14px;overflow-wrap:anywhere}
+.line{display:flex;justify-content:space-between;gap:12px;border-top:1px solid var(--line);padding:10px 0;font-size:14px}
+.line strong{text-align:right}
+.line.total{font-weight:800}
+.error{color:var(--red);font-size:13px;min-height:17px;margin-top:8px}
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.toolbar button{flex:1}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{text-align:left;padding:10px 7px;border-bottom:1px solid var(--line);vertical-align:top}
+td:last-child,th:last-child{text-align:right}
+.history-item{padding:12px 0;border-bottom:1px solid var(--line)}
+.history-item:last-child{border-bottom:0}
+.history-top{display:flex;justify-content:space-between;gap:10px;font-weight:700}
+.history-meta{font-size:12px;color:var(--muted);margin-top:5px}
+.empty{color:var(--muted);font-size:13px}
+.history-actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px}
+.history-actions button{padding:8px 11px;font-size:12px}
+.editing-note{display:none;background:#eff6ff;color:#1d4ed8;border-radius:10px;padding:10px 12px;font-size:13px;margin:0 0 12px}
+.editing-note.show{display:block}
+:root[data-theme="dark"] .editing-note{background:#1e3a5f;color:#dbeafe}
+.history-top span:first-child{overflow-wrap:anywhere}
+button:focus-visible{outline:3px solid #60a5fa;outline-offset:2px}
+@media(max-width:520px){.grid{grid-template-columns:1fr 1fr}.card{padding:15px}.big{font-size:30px}}
+@media(max-width:360px){.grid{grid-template-columns:1fr}.toolbar button{flex-basis:100%}.history-top{flex-direction:column;gap:4px}}
+
+:root[data-theme="dark"]{--ink:#e5e7eb;--muted:#aab4c4;--line:#374151;--blue:#60a5fa;--bg:#0b1220;--green:#4ade80;--red:#fca5a5}
+:root[data-theme="dark"] body{background:var(--bg);color:var(--ink)}
+:root[data-theme="dark"] .card{background:#111827;border-color:#263244;box-shadow:0 5px 18px rgba(0,0,0,.22)}
+:root[data-theme="dark"] input,:root[data-theme="dark"] select{background:#0f172a;color:var(--ink);border-color:#475569}
+:root[data-theme="dark"] .result{background:#0f172a;border-color:#374151}
+:root[data-theme="dark"] .secondary{background:#1e3a5f;color:#dbeafe}
+:root[data-theme="dark"] .danger{background:#4c1d2b;color:#fecdd3}
+:root[data-theme="dark"] .line,:root[data-theme="dark"] th,:root[data-theme="dark"] td{border-color:#374151}
+:root[data-theme="dark"] th{background:#1f2937}
+.theme-toggle{position:fixed;right:16px;top:14px;z-index:5;background:#1f2937;color:#fff;border-radius:999px;padding:10px 14px;box-shadow:0 3px 12px rgba(0,0,0,.2)}
+:root[data-theme="dark"] .theme-toggle{background:#e5e7eb;color:#111827}
+
+
+/* ===== Refinamento visual: interface mais clara, legível e responsiva ===== */
+:root{
+  --ink:#17243a;
+  --muted:#64748b;
+  --line:#e2e8f0;
+  --blue:#2563eb;
+  --bg:#f1f5f9;
+  --green:#15803d;
+  --red:#b42318;
+  --surface:#ffffff;
+  --soft:#f8fafc;
+}
+body{
+  padding:28px 16px 52px;
+  background:
+    radial-gradient(ellipse at 12% 0%,rgba(37,99,235,.09),transparent 34rem),
+    var(--bg);
+  color:var(--ink);
+  font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",Arial,sans-serif;
+  line-height:1.5;
+  -webkit-font-smoothing:antialiased;
+}
+main{max-width:820px}
+header{margin:18px 4px 24px;padding-right:112px}
+h1{font-size:clamp(25px,5vw,34px);line-height:1.15;letter-spacing:-.8px;font-weight:800}
+.sub{font-size:15px;max-width:580px}
+.card{
+  background:var(--surface);
+  border:1px solid var(--line);
+  border-radius:18px;
+  padding:22px;
+  margin:16px 0;
+  box-shadow:0 8px 26px rgba(15,23,42,.045);
+}
+h2{font-size:17px;letter-spacing:-.2px;font-weight:750;margin:0 0 17px}
+label{font-size:13px;line-height:1.35;color:#344256;margin:5px 0 8px}
+input,select{
+  min-height:48px;
+  border:1px solid #cbd5e1;
+  border-radius:11px;
+  padding:12px 13px;
+  font-size:16px;
+  transition:border-color .16s ease,box-shadow .16s ease,background .16s ease;
+}
+input.money{padding-left:42px}
+input.percent{padding-right:40px}
+input::placeholder{color:#94a3b8}
+input:focus,select:focus{
+  border-color:var(--blue);
+  box-shadow:0 0 0 4px rgba(37,99,235,.12);
+}
+.hint{font-size:12.5px;line-height:1.6;color:var(--muted)}
+button{
+  min-height:42px;
+  border-radius:11px;
+  padding:11px 15px;
+  transition:transform .14s ease,box-shadow .14s ease,background .14s ease;
+}
+button:active{transform:translateY(1px)}
+.primary{
+  min-height:52px;
+  background:linear-gradient(135deg,#2563eb,#1d4ed8);
+  box-shadow:0 7px 16px rgba(37,99,235,.2);
+  letter-spacing:.1px;
+}
+.primary:hover{box-shadow:0 9px 20px rgba(37,99,235,.27)}
+.secondary{background:#eff6ff;color:#1d4ed8;border:1px solid #dbeafe}
+.secondary:hover{background:#dbeafe}
+.danger{background:#fff1f2;color:#be123c;border:1px solid #ffe4e6}
+.danger:hover{background:#ffe4e6}
+.result{
+  background:linear-gradient(180deg,#f8fbff,#f8fafc);
+  border:1px solid #dbeafe;
+  border-radius:15px;
+  padding:18px;
+}
+.result-label{font-size:13px;text-transform:uppercase;letter-spacing:.55px;color:#64748b}
+.big{font-size:clamp(32px,7vw,42px);letter-spacing:-1.2px;line-height:1.2;margin:7px 0 16px}
+.line{padding:12px 0;font-size:13.5px;line-height:1.45}
+.line strong{font-size:14px;font-variant-numeric:tabular-nums}
+.line.total{font-size:14px}
+.toolbar{gap:9px}
+.toolbar button{min-height:44px}
+.history-item{padding:16px 2px}
+.history-top{align-items:flex-start;font-size:14px}
+.history-top span:last-child{white-space:nowrap;font-variant-numeric:tabular-nums}
+.history-meta{line-height:1.6}
+.history-actions{margin-top:12px}
+.history-actions button{min-height:36px}
+.theme-toggle{
+  top:16px;right:16px;
+  border:1px solid rgba(255,255,255,.15);
+  box-shadow:0 5px 18px rgba(15,23,42,.18);
+  font-size:13px;
+}
+table{font-size:13px}
+th{font-weight:700}
+#pdfPhotos{padding:9px;background:var(--soft)}
+.editing-note{font-weight:600;border:1px solid #bfdbfe}
+@media(max-width:600px){
+  body{padding:18px 12px 36px}
+  main{width:100%}
+  header{margin:58px 3px 18px;padding-right:0}
+  h1{font-size:27px}
+  .card{padding:17px;border-radius:15px;margin:13px 0}
+  h2{font-size:16px;margin-bottom:14px}
+  .grid{gap:11px}
+  label{font-size:12.5px}
+  .toolbar button{flex:1 1 calc(50% - 8px);font-size:12.5px;padding:10px 9px}
+  .theme-toggle{top:12px;right:12px}
+}
+@media(max-width:390px){
+  .grid{grid-template-columns:1fr}
+  .toolbar button{flex-basis:100%}
+  .line{gap:8px;font-size:12.5px}
+  .line strong{font-size:13px}
+  .history-top{flex-direction:column;gap:3px}
+}
+@media(prefers-reduced-motion:reduce){
+  *,*::before,*::after{scroll-behavior:auto!important;transition:none!important}
+}
+/* Tema escuro refinado */
+:root[data-theme="dark"]{
+  --ink:#e5edf8;
+  --muted:#a6b3c5;
+  --line:#334155;
+  --blue:#60a5fa;
+  --bg:#0b1220;
+  --surface:#111c2e;
+  --soft:#0f172a;
+}
+:root[data-theme="dark"] body{
+  background:
+    radial-gradient(ellipse at 12% 0%,rgba(59,130,246,.12),transparent 34rem),
+    var(--bg);
+  color:var(--ink);
+}
+:root[data-theme="dark"] .card{
+  background:var(--surface);
+  border-color:#26364b;
+  box-shadow:0 8px 26px rgba(0,0,0,.18);
+}
+:root[data-theme="dark"] label{color:#d3deec}
+:root[data-theme="dark"] input,
+:root[data-theme="dark"] select{
+  background:#0c1728;color:var(--ink);border-color:#40516a;
+}
+:root[data-theme="dark"] input::placeholder{color:#718096}
+:root[data-theme="dark"] .result{
+  background:linear-gradient(180deg,#14243a,#101b2c);
+  border-color:#2c4565;
+}
+:root[data-theme="dark"] .result-label{color:#a6b8ce}
+:root[data-theme="dark"] .secondary{
+  background:#172f50;color:#bfdbfe;border-color:#29496f;
+}
+:root[data-theme="dark"] .secondary:hover{background:#1e3a5f}
+:root[data-theme="dark"] .danger{
+  background:#3b1c2b;color:#fecdd3;border-color:#633044;
+}
+:root[data-theme="dark"] .danger:hover{background:#512337}
+:root[data-theme="dark"] #pdfPhotos{background:#0c1728;color:var(--ink)}
+:root[data-theme="dark"] .theme-toggle{background:#e2e8f0;color:#0f172a}
+
+</style>
+</head>
+<body>
+<button class="theme-toggle" id="themeToggle" type="button" aria-label="Alternar tema">🌙 Tema escuro</button>
+<main>
+<header>
+<h1>Calculadora de Precificação</h1>
+<p class="sub">Calcule um preço de venda que considere seus custos, taxas, comissão e lucro desejado.</p>
+<div class="card" style="margin-top:14px">
+<label for="name">Nome do produto</label>
+<input id="name" type="text" maxlength="70" placeholder="Ex.: Tempero baiano">
+</div>
+</header>
+
+<section class="card">
+<h2>1. Custos do produto</h2>
+<div class="grid">
+<div><label for="product">Valor de compra</label><div class="field"><span class="prefix">R$</span><input class="money" id="product" type="number" min="0" step=".01" value="35" inputmode="decimal"></div></div>
+<div><label for="freight">Frete</label><div class="field"><span class="prefix">R$</span><input class="money" id="freight" type="number" min="0" step=".01" value="0" inputmode="decimal"></div></div>
+<div><label for="packing">Embalagem</label><div class="field"><span class="prefix">R$</span><input class="money" id="packing" type="number" min="0" step=".01" value="0" inputmode="decimal"></div></div>
+<div><label for="other">Outros custos</label><div class="field"><span class="prefix">R$</span><input class="money" id="other" type="number" min="0" step=".01" value="0" inputmode="decimal"></div></div>
+</div>
+<p class="hint">Inclua aqui os custos por unidade. Se o frete ou a embalagem atender vários produtos, divida o valor entre as unidades.</p>
+</section>
+
+<section class="card">
+<h2>2. Percentuais sobre a venda</h2>
+<div class="grid">
+<div><label for="fee">Taxa de cartão / plataforma</label><div class="field"><input class="percent" id="fee" type="number" min="0" step=".1" value="0" inputmode="decimal"><span class="suffix">%</span></div></div>
+<div><label for="commission">Comissão do vendedor</label><div class="field"><input class="percent" id="commission" type="number" min="0" step=".1" value="0" inputmode="decimal"><span class="suffix">%</span></div></div>
+<div><label for="profit">Lucro desejado sobre os custos</label><div class="field"><input class="percent" id="profit" type="number" min="0" step=".1" value="100" inputmode="decimal"><span class="suffix">%</span></div></div>
+<div><label for="discount">Desconto que pretende oferecer</label><div class="field"><input class="percent" id="discount" type="number" min="0" max="99.9" step=".1" value="0" inputmode="decimal"><span class="suffix">%</span></div></div>
+</div>
+<p class="hint">Taxa e comissão são calculadas sobre o preço efetivamente pago pelo cliente. O lucro desejado é um acréscimo sobre o custo total.</p>
+</section>
+
+<section class="card">
+<h2>3. Preço e arredondamento</h2>
+<div class="grid">
+<div><label for="rounding">Sugestão de preço comercial</label>
+<select id="rounding">
+<option value="none">Sem arredondar</option>
+<option value="90">Finalizar em ,90 (arredondar para cima)</option>
+<option value="99">Finalizar em ,99 (arredondar para cima)</option>
+<option value="whole">Próximo real inteiro</option>
+</select></div>
+
+</div>
+<button class="primary" id="calculate">Calcular preço de venda</button>
+<div class="error" id="error" role="alert"></div>
+</section>
+
+<section class="card">
+<h2>Resultado</h2>
+<div class="result" aria-live="polite">
+<div class="result-label">Preço sugerido para anunciar</div>
+<div class="big" id="listPrice">R$ 70,00</div>
+<div class="line"><span>Preço mínimo para atingir o lucro desejado (sem desconto)</span><strong id="basePrice">R$ 70,00</strong></div>
+<div class="line"><span>Preço após desconto informado</span><strong id="paidPrice">R$ 70,00</strong></div>
+<div class="line"><span>Custo total</span><strong id="costTotal">R$ 35,00</strong></div>
+<div class="line"><span>Taxa de venda</span><strong id="feeValue">R$ 0,00</strong></div>
+<div class="line"><span>Comissão do vendedor</span><strong id="commissionValue">R$ 0,00</strong></div>
+<div class="line"><span>Lucro estimado após desconto</span><strong id="netProfit">R$ 35,00</strong></div>
+<div class="line"><span>Margem de lucro sobre a venda</span><strong id="margin">50,0%</strong></div>
+</div>
+<div class="editing-note" id="editingNote">Editando produto do histórico. Salve para confirmar as alterações.</div>
+<div class="toolbar">
+<button class="secondary" id="save">Salvar no histórico</button>
+<button class="secondary" id="copyPrice">Copiar somente o preço</button>
+<button class="secondary" id="downloadPrice">Baixar somente o preço</button>
+<button class="secondary" id="reset">Limpar campos</button>
+</div>
+<p class="hint">O preço sugerido é calculado antes do desconto. Ao aumentar o desconto, o valor pago pelo cliente diminui; o lucro estimado também pode diminuir. A margem é o lucro dividido pelo valor pago pelo cliente.</p>
+</section>
+
+<section class="card">
+<h2>Histórico de produtos</h2>
+<div id="history" class="empty">Nenhum cálculo salvo ainda.</div>
+<div class="grid" style="margin-top:14px">
+  <div style="grid-column:1/-1">
+    <label for="pdfTitle">Título que aparecerá no PDF</label>
+    <input id="pdfTitle" type="text" maxlength="80" value="Preços finais dos produtos" placeholder="Ex.: Tabela de preços">
+  </div>
+  <div style="grid-column:1/-1">
+    <label for="pdfPhotos">Fotos para colocar no PDF (até 3)</label>
+    <input id="pdfPhotos" type="file" accept="image/*" multiple>
+    <p class="hint" id="photoHint">Escolha até 3 fotos. Elas serão incluídas no PDF abaixo do título.</p>
+  </div>
+</div>
+<div class="toolbar">
+<button class="secondary" id="exportPdf">Baixar histórico em PDF</button>
+<button class="secondary" id="exportJpeg">Baixar histórico em JPEG</button>
+<button class="secondary" id="shareHistory">Compartilhar pelo WhatsApp</button>
+<button class="danger" id="clearHistory">Apagar histórico</button>
+</div>
+<p class="hint">O histórico fica salvo neste navegador e neste aparelho. Limpar os dados do navegador pode apagá-lo.</p>
+</section>
+
+<section class="card">
+<h2>Como o cálculo funciona</h2>
+<p class="hint">A calculadora soma compra, frete, embalagem e outros custos. Depois considera taxa e comissão como percentuais do preço de venda e calcula o preço necessário para atingir o lucro desejado antes do desconto. O desconto é aplicado em seguida e reduz o valor pago pelo cliente. Impostos, custos fixos e outras despesas não informadas precisam ser adicionados em “Outros custos” quando puderem ser atribuídos a cada unidade.</p>
+</section>
+</main>
+<script>
+const $=id=>document.getElementById(id);
+const money=n=>n.toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+let current=null;
+let editingIndex=null;
+
+const themeToggle=$('themeToggle');
+function setTheme(theme){
+ document.documentElement.dataset.theme=theme;
+ themeToggle.textContent=theme==='dark'?'☀️ Tema claro':'🌙 Tema escuro';
+ try{localStorage.setItem('precificacao_theme',theme)}catch{}
+}
+let savedTheme='light';
+try{savedTheme=localStorage.getItem('precificacao_theme')||'light'}catch{}
+setTheme(savedTheme);
+themeToggle.addEventListener('click',()=>setTheme(document.documentElement.dataset.theme==='dark'?'light':'dark'));
+
+function read(){
+ const ids=['product','freight','packing','other','fee','commission','profit','discount'];
+ const v={}; for(const id of ids){const raw=$(id).value;if(raw.trim()==='')throw Error('Preencha todos os campos numéricos.');v[id]=Number(raw);if(!Number.isFinite(v[id])||v[id]<0)throw Error('Use apenas valores válidos iguais ou maiores que zero.');}
+ if(v.discount>=100)throw Error('O desconto precisa ser menor que 100%.');
+ if(v.fee+v.commission>=100)throw Error('A soma da taxa e da comissão precisa ser menor que 100%.');
+ return v;
+}
+function roundUp(value,mode){
+ if(mode==='whole')return Math.ceil(value);
+ if(mode==='90'||mode==='99'){
+  const cents=Number(mode)/100;
+  let candidate=Math.floor(value)+cents;
+  if(candidate+1e-9<value)candidate+=1;
+  return Math.round(candidate*100)/100;
+ }
+ return value;
+}
+function calculate(){
+ try{
+  const v=read(),cost=v.product+v.freight+v.packing+v.other;
+  const variable=(v.fee+v.commission)/100,discount=v.discount/100;
+  if((1-variable)<=0)throw Error('Não foi possível calcular com esses percentuais.');
+  // O preço anunciado é calculado sem embutir o desconto.
+  // Assim, aumentar o desconto sempre reduz o valor pago pelo cliente.
+  const requiredPaid=cost*(1+v.profit/100)/(1-variable);
+  const list=roundUp(requiredPaid,$('rounding').value);
+  const paid=list*(1-discount),fee=paid*v.fee/100,commission=paid*v.commission/100;
+  const net=paid-fee-commission-cost,margin=paid>0?net/paid*100:0;
+  current={name:$('name').value.trim()||'Produto sem nome',cost,product:v.product,freight:v.freight,packing:v.packing,other:v.other,feePct:v.fee,commissionPct:v.commission,profitPct:v.profit,discountPct:v.discount,list,paid,fee,commission,net,margin};
+  $('listPrice').textContent=money(list);$('basePrice').textContent=money(requiredPaid);
+  $('paidPrice').textContent=money(paid);$('costTotal').textContent=money(cost);
+  $('feeValue').textContent=money(fee);$('commissionValue').textContent=money(commission);
+  $('netProfit').textContent=money(net);$('margin').textContent=margin.toLocaleString('pt-BR',{minimumFractionDigits:1,maximumFractionDigits:2})+'%';
+  $('error').textContent='';
+ }catch(e){$('error').textContent=e.message;current=null;}
+}
+function getHistory(){try{return JSON.parse(localStorage.getItem('precificacao_history')||'[]')}catch{return []}}
+function renderHistory(){
+ const h=getHistory(),el=$('history');
+ if(!h.length){el.className='empty';el.textContent='Nenhum cálculo salvo ainda.';return;}
+ const totalPaid=h.reduce((sum,x)=>sum+Number(x.paid??x.list??0),0);
+ const totalDiscount=h.reduce((sum,x)=>sum+Math.max(0,Number(x.list??0)-Number(x.paid??x.list??0)),0);
+ el.className='';
+ el.innerHTML=h.map((x,i)=>{
+  const discount=Number(x.discountPct??0),paid=Number(x.paid??x.list??0);
+  return `<div class="history-item">
+   <div class="history-top"><span>${escapeHtml(x.name)}</span><span>${money(paid)}</span></div>
+   <div class="history-meta">Preço anunciado ${money(x.list??paid)} · Desconto ${discount.toLocaleString('pt-BR',{maximumFractionDigits:2})}% · Preço final ${money(paid)} · ${new Date(x.date).toLocaleString('pt-BR')}</div>
+   <div class="history-actions">
+    <button class="secondary" type="button" data-action="edit" data-index="${i}">Editar</button>
+    <button class="secondary" type="button" data-action="share" data-index="${i}">WhatsApp</button>
+    <button class="danger" type="button" data-action="delete" data-index="${i}">Excluir</button>
+   </div>
+  </div>`;
+ }).join('')+`<div class="result" style="margin-top:14px"><div class="line total"><span>Total final de todos os produtos</span><strong>${money(totalPaid)}</strong></div><div class="line"><span>Economia total em descontos</span><strong>${money(totalDiscount)}</strong></div><div class="line"><span>Quantidade de produtos</span><strong>${h.length}</strong></div></div>`;
+}
+function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function whatsappShare(text){
+ const url='https://wa.me/?text='+encodeURIComponent(text);
+ window.open(url,'_blank','noopener');
+}
+function productShareText(x){
+ const paid=Number(x.paid??x.list??0),list=Number(x.list??paid);
+ const discount=Number(x.discountPct??0);
+ return `*${x.name||'Produto'}*\nPreço anunciado: ${money(list)}\nDesconto: ${discount.toLocaleString('pt-BR',{maximumFractionDigits:2})}%\n*Preço final: ${money(paid)}*`;
+}
+$('history').addEventListener('click',e=>{
+ const button=e.target.closest('button[data-action]');
+ if(!button)return;
+ const index=Number(button.dataset.index),h=getHistory(),item=h[index];
+ if(!item)return;
+ if(button.dataset.action==='edit'){
+  editingIndex=index;
+  $('name').value=item.name||'';
+  $('product').value=item.product??0;
+  $('freight').value=item.freight??0;
+  $('packing').value=item.packing??0;
+  $('other').value=item.other??0;
+  $('fee').value=item.feePct??0;
+  $('commission').value=item.commissionPct??0;
+  $('profit').value=item.profitPct??100;
+  $('discount').value=item.discountPct??0;
+  $('rounding').value='none';
+  $('save').textContent='Atualizar produto';
+  $('editingNote').classList.add('show');
+  calculate();
+  $('name').scrollIntoView({behavior:'smooth',block:'center'});
+ }else if(button.dataset.action==='delete'){
+  if(!confirm(`Excluir "${item.name||'Produto'}" do histórico?`))return;
+  h.splice(index,1);
+  try{localStorage.setItem('precificacao_history',JSON.stringify(h));}
+  catch{$('error').textContent='Não foi possível atualizar o histórico.';return;}
+  if(editingIndex===index)cancelEdit();
+  else if(editingIndex!==null&&index<editingIndex)editingIndex--;
+  renderHistory();
+ }else if(button.dataset.action==='share'){
+  whatsappShare(productShareText(item));
+ }
+});
+function cancelEdit(){
+ editingIndex=null;
+ $('save').textContent='Salvar no histórico';
+ $('editingNote').classList.remove('show');
+}
+$('shareHistory').addEventListener('click',()=>{
+ const h=getHistory();
+ if(!h.length){alert('Salve pelo menos um produto no histórico antes de compartilhar.');return;}
+ const total=h.reduce((sum,x)=>sum+Number(x.paid??x.list??0),0);
+ const text='*Tabela de preços*\n\n'+h.map(x=>productShareText(x)).join('\n\n')+
+  `\n\n*Total final: ${money(total)}*`;
+ whatsappShare(text);
+});
+
+function downloadText(filename,content){
+ const blob=new Blob([content],{type:'text/plain;charset=utf-8'});
+ const url=URL.createObjectURL(blob),a=document.createElement('a');
+ a.href=url;a.download=filename;a.click();URL.revokeObjectURL(url);
+}
+$('copyPrice').addEventListener('click',async()=>{
+ calculate();if(!current)return;
+ try{
+  await navigator.clipboard.writeText(money(current.list));
+  $('copyPrice').textContent='Preço copiado!';
+  setTimeout(()=>$('copyPrice').textContent='Copiar somente o preço',1500);
+ }catch{
+  $('error').textContent='Não foi possível copiar automaticamente. Você pode baixar o preço em arquivo de texto.';
+ }
+});
+$('downloadPrice').addEventListener('click',()=>{
+ calculate();if(!current)return;
+ const safeName=(current.name||'produto').replace(/[^a-z0-9_-]+/gi,'_');
+ downloadText(`preco_${safeName}.txt`,`${current.name}\n${money(current.list)}\n`);
+});
+function readImageFile(file){
+ return new Promise((resolve,reject)=>{
+  const reader=new FileReader();
+  reader.onload=()=>resolve({src:reader.result,name:file.name});
+  reader.onerror=()=>reject(new Error('Não foi possível ler uma das fotos.'));
+  reader.readAsDataURL(file);
+ });
+}
+$('pdfPhotos').addEventListener('change',()=>{
+ const files=Array.from($('pdfPhotos').files||[]);
+ if(files.length>3){
+  alert('Você pode escolher no máximo 3 fotos. Selecione novamente.');
+  $('pdfPhotos').value='';
+  $('photoHint').textContent='Escolha até 3 fotos. Elas serão incluídas no PDF abaixo do título.';
+  return;
+ }
+ $('photoHint').textContent=files.length?`${files.length} foto(s) selecionada(s).`:'Escolha até 3 fotos. Elas serão incluídas no PDF abaixo do título.';
+});
+
+function historyTotals(h){
+ return {
+  final:h.reduce((sum,x)=>sum+Number(x.paid??x.list??0),0),
+  announced:h.reduce((sum,x)=>sum+Number(x.list??x.paid??0),0),
+  savings:h.reduce((sum,x)=>sum+Math.max(0,Number(x.list??0)-Number(x.paid??x.list??0)),0)
+ };
+}
+async function getExportData(){
+ const h=getHistory();
+ if(!h.length){alert('Salve pelo menos um produto no histórico antes de exportar.');return null;}
+ const files=Array.from($('pdfPhotos').files||[]);
+ if(files.length>3){alert('Escolha no máximo 3 fotos.');return null;}
+ let photos=[];
+ try{photos=await Promise.all(files.map(readImageFile));}
+ catch(e){alert(e.message);return null;}
+ return {h,photos,title:$('pdfTitle').value.trim()||'Preços finais dos produtos',totals:historyTotals(h)};
+}
+$('exportPdf').addEventListener('click',async()=>{
+ const data=await getExportData();if(!data)return;
+ const {h,photos,title,totals}=data;
+ const rows=h.map(x=>{
+  const discount=Number(x.discountPct??0);
+  const paid=Number(x.paid??x.list??0);
+  return `<tr><td>${escapeHtml(x.name)}</td><td>${money(x.list??paid)}</td><td>${discount.toLocaleString('pt-BR',{maximumFractionDigits:2})}%</td><td>${money(paid)}</td></tr>`;
+ }).join('');
+ const photoHtml=photos.length?`<div class="photos">${photos.map(p=>`<img src="${p.src}" alt="${escapeHtml(p.name)}">`).join('')}</div>`:'';
+ const win=window.open('','_blank');
+ if(!win){alert('Permita a abertura de janelas para gerar o PDF.');return;}
+ win.document.write(`<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>${escapeHtml(title)}</title>
+ <style>
+ body{font-family:Arial,sans-serif;padding:28px;color:#172033}
+ h1{font-size:22px;margin:0 0 18px}
+ .photos{display:flex;flex-wrap:wrap;gap:12px;margin:0 0 20px;align-items:flex-start}
+ .photos img{width:calc(33.333% - 8px);max-height:190px;object-fit:contain;border:1px solid #ddd;border-radius:8px}
+ table{width:100%;border-collapse:collapse;margin-top:18px;font-size:14px}
+ th,td{text-align:left;padding:12px 9px;border-bottom:1px solid #ddd}
+ th{background:#f1f5f9}
+ td:not(:first-child),th:not(:first-child){text-align:right}
+ tfoot{font-weight:700;background:#f8fafc}
+ .totals{margin-top:20px;text-align:right;font-size:14px;line-height:1.8;font-weight:700}
+ @media print{body{padding:0}.photos img{break-inside:avoid}}
+ </style></head><body><h1>${escapeHtml(title)}</h1>
+ ${photoHtml}
+ <table><thead><tr><th>Produto</th><th>Preço anunciado</th><th>Desconto</th><th>Preço final</th></tr></thead><tbody>${rows}</tbody></table>
+ <div class="totals">Total anunciado: ${money(totals.announced)}<br>Economia total em descontos: ${money(totals.savings)}<br>Total final atualizado: ${money(totals.final)}</div>
+ <script>window.onload=()=>{const imgs=Array.from(document.images);Promise.all(imgs.map(img=>img.complete?Promise.resolve():new Promise(resolve=>{img.onload=resolve;img.onerror=resolve;}))).then(()=>window.print());};<\/script>
+ </body></html>`);
+ win.document.close();
+});
+
+$('exportJpeg').addEventListener('click',async()=>{
+ const data=await getExportData();if(!data)return;
+ const {h,photos,title,totals}=data;
+ const scale=2, width=1100, pad=60, photoH=photos.length?260:0;
+ const rowH=68, headerH=90, totalsH=170;
+ const height=pad+headerH+photoH+(photos.length?28:0)+70+h.length*rowH+totalsH+pad;
+ const canvas=document.createElement('canvas');canvas.width=width*scale;canvas.height=height*scale;
+ const ctx=canvas.getContext('2d');ctx.scale(scale,scale);
+ ctx.fillStyle='#ffffff';ctx.fillRect(0,0,width,height);
+ ctx.fillStyle='#172033';ctx.font='bold 34px Arial';ctx.fillText(title,pad,pad+38);
+ let y=pad+headerH;
+ if(photos.length){
+  const loaded=await Promise.all(photos.map(p=>new Promise(resolve=>{
+   const im=new Image();im.onload=()=>resolve(im);im.onerror=()=>resolve(null);im.src=p.src;
+  })));
+  const gap=18, boxW=(width-2*pad-gap*(photos.length-1))/photos.length;
+  loaded.forEach((im,i)=>{
+   if(!im)return;
+   const x=pad+i*(boxW+gap), maxH=photoH;
+   const ratio=Math.min(boxW/im.width,maxH/im.height);
+   const w=im.width*ratio,hh=im.height*ratio;
+   ctx.drawImage(im,x+(boxW-w)/2,y+(maxH-hh)/2,w,hh);
+  });
+  y+=photoH+28;
+ }
+ const cols=[pad,pad+500,pad+680,pad+830,width-pad];
+ ctx.fillStyle='#eff3f8';ctx.fillRect(pad,y,width-2*pad,58);
+ ctx.fillStyle='#172033';ctx.font='bold 19px Arial';
+ ctx.textAlign='left';ctx.fillText('Produto',cols[0]+12,y+36);
+ ctx.textAlign='right';ctx.fillText('Preço anunciado',cols[2]-12,y+36);
+ ctx.fillText('Desconto',cols[3]-12,y+36);
+ ctx.fillText('Preço final',cols[4]-12,y+36);
+ y+=58;
+ ctx.font='18px Arial';
+ h.forEach((x,i)=>{
+  const discount=Number(x.discountPct??0),paid=Number(x.paid??x.list??0);
+  ctx.fillStyle=i%2?'#ffffff':'#fafbfd';ctx.fillRect(pad,y,width-2*pad,rowH);
+  ctx.fillStyle='#172033';ctx.textAlign='left';
+  let name=String(x.name||'Produto');while(ctx.measureText(name).width>450&&name.length>4)name=name.slice(0,-4)+'…';
+  ctx.fillText(name,cols[0]+12,y+42);
+  ctx.textAlign='right';ctx.fillText(money(x.list??paid),cols[2]-12,y+42);
+  ctx.fillText(discount.toLocaleString('pt-BR',{maximumFractionDigits:2})+'%',cols[3]-12,y+42);
+  ctx.font='bold 18px Arial';ctx.fillText(money(paid),cols[4]-12,y+42);ctx.font='18px Arial';
+  ctx.strokeStyle='#e5e7eb';ctx.beginPath();ctx.moveTo(pad,y+rowH);ctx.lineTo(width-pad,y+rowH);ctx.stroke();
+  y+=rowH;
+ });
+ y+=28;ctx.fillStyle='#172033';ctx.textAlign='right';ctx.font='bold 20px Arial';
+ ctx.fillText('Total anunciado: '+money(totals.announced),width-pad,y);y+=36;
+ ctx.fillText('Economia em descontos: '+money(totals.savings),width-pad,y);y+=42;
+ ctx.font='bold 25px Arial';ctx.fillText('TOTAL FINAL ATUALIZADO: '+money(totals.final),width-pad,y);
+ const link=document.createElement('a');
+ link.download='historico_precos.jpg';
+ link.href=canvas.toDataURL('image/jpeg',0.92);
+ link.click();
+});
+
+$('calculate').addEventListener('click',calculate);
+['product','freight','packing','other','fee','commission','profit','discount','rounding'].forEach(id=>$(id).addEventListener('input',calculate));
+$('save').addEventListener('click',()=>{
+ calculate();if(!current)return;
+ const h=getHistory();
+ if(editingIndex!==null&&h[editingIndex]){
+  h[editingIndex]={...current,date:h[editingIndex].date||new Date().toISOString(),updatedAt:new Date().toISOString()};
+ }else{
+  h.unshift({...current,date:new Date().toISOString()});
+  if(h.length>100)h.length=100;
+ }
+ try{
+  localStorage.setItem('precificacao_history',JSON.stringify(h));
+  cancelEdit();renderHistory();
+  $('save').textContent='Salvo!';
+  setTimeout(()=>$('save').textContent='Salvar no histórico',1300);
+ }catch{$('error').textContent='Não foi possível salvar o histórico neste navegador.';}
+});
+$('reset').addEventListener('click',()=>{
+ ['product','freight','packing','other','fee','commission','discount'].forEach(id=>$(id).value=0);
+ $('product').value=0;$('profit').value=100;$('name').value='';$('rounding').value='none';calculate();
+});
+$('clearHistory').addEventListener('click',()=>{if(confirm('Deseja apagar todo o histórico salvo neste navegador?')){localStorage.removeItem('precificacao_history');renderHistory();}});
+calculate();renderHistory();
+</script>
+</body>
+</html>
